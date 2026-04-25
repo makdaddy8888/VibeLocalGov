@@ -4,6 +4,7 @@
   const PREFS_KEY = "vibelocalgov-prefs-v1";
   const DRAFT_KEY = "vibelocalgov-draft-v1";
   const SUBMISSIONS_KEY = "vibelocalgov-submissions-v1";
+  const TEST_PANEL_KEY = "vibelocalgov-test-panel-open";
   const MAX_SAVED = 30;
 
   /** Last successful generate: used for copy/download this response. */
@@ -126,7 +127,8 @@
   const emailErr = $("email-err");
   const workArea = $("work-area");
   const outputSection = $("output-section");
-  const outputText = $("output-text");
+  const outputThought = $("output-thought");
+  const outputPaste = $("output-paste");
   const copyStatus = $("copy-status");
   const ideasBlock = $("ideas-block");
   const ideasLede = $("ideas-lede");
@@ -472,14 +474,17 @@
   function buildFullMarkdownExport(record) {
     var f = record.form;
     var dom = f.email && f.email.indexOf("@") > 0 ? f.email.split("@")[1] : "";
+    var thoughts = record.promptThoughts || "";
+    var paste = record.vibePromptPaste || record.vibePrompt || "";
     var lines = [
       "# VibeLocalGov — export for your council folder",
       "",
-      "Use the **Vibe / Power Platform** section in this file. Open it in your editor and copy the prompt into the Vibe (or Copilot) window when your policies allow.",
+      "There are **two** prompt parts below. For **Vibe** at [vibe.powerapps.com](https://vibe.powerapps.com), use **only** the *Paste into Vibe* section.",
       "",
       "| Field | Value |",
       "| --- | --- |",
       "| Saved (ISO) | " + (record.createdAt || "") + " |",
+      "| Form version | " + (record.formVersion || "1") + " |",
       "| Council folder id | " + (f.councilKey || "") + " |",
       "| Work email domain | " + dom + " |",
       "| Position | " + String(f.position || "").replace(/\|/g, "/") + " |",
@@ -487,23 +492,29 @@
       "| Time in local govt | " + (f.tenureLabel || "") + " |",
       "| Time cost (pain) | " + (f.timeCostLabel || "") + " |",
       "",
-      "## Full Vibe / Copilot prompt (copy everything in this section into Vibe)",
+      "## 1. Thought process (read / share — not for the Vibe box)",
       "",
     ];
-    lines.push(record.vibePrompt || "");
+    lines.push(thoughts);
     lines.push(
       "",
       "---",
       "",
-      "## Pain point (what you typed)",
+      "## 2. Paste into Vibe only (vibe.powerapps.com)",
       "",
-      f.pain || "",
-      "",
-      "## Expected benefits (what you typed)",
-      "",
-      f.benefits || "",
+      "Copy from the next line into the Vibe prompt field.",
+      ""
+    );
+    lines.push(paste);
+    lines.push(
       "",
       "---",
+      "",
+      "## Source fields (raw)",
+      "",
+      "**Pain** — " + (f.pain || ""),
+      "",
+      "**Benefits** — " + (f.benefits || ""),
       "",
       "*Generated in-browser by VibeLocalGov — not an automated AI call.*",
       ""
@@ -566,7 +577,7 @@
           line.hidden = false;
           line.textContent = "Wrote " + (j.relativeFile || "file") + " — open that path in this repo in your editor.";
         }
-        showBanner("banner-success", "Saved Markdown in your project. Open the file and copy the prompt into Vibe.");
+        showBanner("banner-success", "Saved Markdown in your project. Copy the *Paste into Vibe* section into vibe.powerapps.com.");
       })
       .catch(function () {
         showBanner("banner-error", "Could not save. Is `node server.js` running? Use Download as Markdown as a fallback.");
@@ -607,6 +618,65 @@
     showBanner("banner-success", "Loaded TEST data. Click “Generate Vibe prompt” to see output and try Save / download.");
   }
 
+  function setTestPanelOpen(open) {
+    var body = $("test-tools-body");
+    var btn = $("btn-test-toggle");
+    if (!body || !btn) return;
+    try {
+      sessionStorage.setItem(TEST_PANEL_KEY, open ? "1" : "0");
+    } catch (e) {
+      /* ignore */
+    }
+    if (open) {
+      body.removeAttribute("hidden");
+      btn.setAttribute("aria-expanded", "true");
+      btn.textContent = "Hide testing tools";
+    } else {
+      body.setAttribute("hidden", "");
+      btn.setAttribute("aria-expanded", "false");
+      btn.textContent = "Show testing tools";
+    }
+  }
+
+  function initTestPanelFromStorage() {
+    var o = "1";
+    try {
+      o = sessionStorage.getItem(TEST_PANEL_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+    if (o === "0") {
+      setTestPanelOpen(false);
+    } else {
+      setTestPanelOpen(true);
+    }
+  }
+
+  function clearEntireForm() {
+    if (!confirm("Clear all fields, browser draft, and the generated output? You can start again from scratch.")) {
+      return;
+    }
+    form.reset();
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+    lastRecord = null;
+    if (outputThought) outputThought.value = "";
+    if (outputPaste) outputPaste.value = "";
+    if (outputSection) outputSection.hidden = true;
+    var ms = $("md-save-line");
+    if (ms) {
+      ms.textContent = "";
+      ms.hidden = true;
+    }
+    updateIdeas();
+    emailInput.classList.remove("user-invalid");
+    emailErr.textContent = "";
+    showBanner("banner-success", "Form and output cleared.");
+  }
+
   function updateOutputLocalHints() {
     var h = $("md-local-hint");
     var b = $("btn-save-md-server");
@@ -617,7 +687,7 @@
     }
   }
 
-  function buildPrompt() {
+  function gatherPromptInputs() {
     const name = (form.elements["full-name"].value || "").trim();
     const email = (form.elements["email"].value || "").trim();
     const position = (form.elements["position"].value || "").trim();
@@ -629,57 +699,93 @@
     const timeCost = form.elements["time-cost"].value;
     const benefits = (form.elements["benefits"].value || "").trim();
     const includeName = form.elements["include-name"].checked;
-
     const ideasLines =
       areaData && areaData.ideas
         ? areaData.ideas.map(function (i, n) {
             return n + 1 + ". " + i;
           })
         : ["1. (No area selected — add your own in the next section.)"];
+    return {
+      name: name,
+      email: email,
+      position: position,
+      areaKey: areaKey,
+      workAreaText: workAreaText,
+      tenure: tenure,
+      pain: pain,
+      timeCost: timeCost,
+      benefits: benefits,
+      includeName: includeName,
+      ideasLines: ideasLines,
+    };
+  }
 
+  function buildPromptThoughts(ctx) {
     return [
-      "# Prompt for Vibe in Microsoft Power Platform (Australian local government)",
+      "# Thought process — do **not** paste this block into Vibe",
       "",
-      "Use this prompt in [Vibe for Power Platform](https://vibe.powerapps.com) or in Microsoft Copilot where your organisation allows Power Platform design assistance. Do **not** paste personal information about residents; describe processes, systems, and roles generically. Follow your council’s privacy, security, and AI use policies, with **human-in-the-loop** for decisions, notices, and customer-facing content.",
+      "This section explains how VibeLocalGov built your request and the Australian local-government context. Share it with your team or keep it for records. The **only** text that belongs in the Vibe prompt box is in part **2** in the app (or the *Paste into Vibe* section in an export).",
       "",
-      "## Microsoft Power Platform — why this context matters",
+      "## Microsoft Power Platform — why the details matter",
       "",
-      "Power Platform brings together **Power Apps** (forms and mobile experiences), **Dataverse** (governed data), and **Power Automate** (workflows) — often with **Microsoft 365 Copilot** to draft steps and help explore connectors. A clear prompt helps the assistant suggest **scoped pilots**: secure storage, role-based access, review queues, and audit-friendly logs.",
+      "Power Platform brings together **Power Apps** (forms and mobile experiences), **Dataverse** (governed data), and **Power Automate** (workflows) — often with **Microsoft 365 Copilot** to explore connectors. A good pilot keeps **data in your tenant**, uses **role-based access**, and keeps **people in the loop** for any decision that affects residents or staff.",
       "",
-      "## My council context",
+      "## My council context (how we framed your request)",
       "",
-      includeName && name
-        ? "- **Name:** " + name
-        : "- **Name:** (withheld in this prompt — add your work context in your org’s approved tool if needed.)",
-      "- **Council folder id (for local Markdown files):** " + (resolveCouncilKey() || "(derived from work email)"),
-      "- **Work email domain:** " + (email ? email.split("@")[1] : "(not given)"),
-      "- **Position / title:** " + (position || "(not given)"),
-      "- **Primary work area:** " + workAreaText,
-      "- **Time in local government:** " + (TERM_LABELS[tenure] || tenure),
+      ctx.includeName && ctx.name
+        ? "- **Name:** " + ctx.name
+        : "- **Name:** (withheld — add in your org’s tool if the facilitator needs it.)",
+      "- **Council folder id (local files):** " + (resolveCouncilKey() || "(derived from work email)"),
+      "- **Work email domain:** " + (ctx.email ? ctx.email.split("@")[1] : "(not given)"),
+      "- **Position / title:** " + (ctx.position || "(not given)"),
+      "- **Primary work area:** " + ctx.workAreaText,
+      "- **Time in local government:** " + (TERM_LABELS[ctx.tenure] || ctx.tenure),
       "",
-      "## Problem I want to improve with a Power App or automation",
+      "## The problem and impact (as you described it)",
       "",
-      pain,
+      ctx.pain,
       "",
-      "- **Time this problem costs (roughly, per week):** " + (TIME_LABELS[timeCost] || timeCost),
+      "- **Time this problem costs (roughly, per week):** " + (TIME_LABELS[ctx.timeCost] || ctx.timeCost),
       "",
-      "## Benefits if this is solved well",
+      "## Outcomes you said you want",
       "",
-      benefits,
+      ctx.benefits,
       "",
-      "## Example challenges for my role (context for Vibe; adapt or replace)",
+      "## Example challenges for your role (ideas to spark the build)",
       "",
-      ...ideasLines,
+      ...ctx.ideasLines,
       "",
-      "## What I want from Vibe / Copilot",
+      "## What we are asking Vibe to produce (rationale)",
       "",
-      "1. Propose a **low-code solution outline** (Power Apps + Dataverse and/or Power Automate) with **roles, approvals, and data stays in our tenant**.",
-      "2. List **assumptions** and **out-of-scope** items (e.g. legal determinations, enforcement outcomes, or resident-facing messages without review).",
-      "3. Suggest a **pilot** with measurable outcomes (time saved, errors reduced) and a **governance** checklist (AI disclosure, PPIP / privacy, records).",
-      "4. If useful, provide a **rough backlog** of screens, entities, and flows I can take to my IT/digital and records teams.",
+      "The lean prompt in part **2** asks for: a tight pilot design using Power Platform; explicit **assumptions** and **out-of-scope** items; **governance** touchpoints (privacy, records, human review); and a starter **backlog** for your IT or digital team. We strip coaching text out of the paste box so Vibe gets a direct instruction, not a tutorial.",
       "",
       "---",
-      "Generated with VibeLocalGov — single-page form; not automated AI inference.",
+      "Generated in-browser by VibeLocalGov — not an automated AI call.",
+    ].join("\n");
+  }
+
+  function buildPromptVibeOnly(ctx) {
+    const domain = ctx.email && ctx.email.indexOf("@") > 0 ? ctx.email.split("@")[1] : "(work domain not given)";
+    return [
+      "I work in Australian local government. Use Microsoft Power Platform (Power Apps, Dataverse, Power Automate) in our cloud tenant. Do not rely on or invent personal data about residents; describe processes in generic terms. Australian privacy and records rules apply; human review is required for enforcement outcomes, legal positions, and anything sent to the public.",
+      "",
+      "Context:",
+      "- Work email domain: " + domain,
+      "- Position: " + (ctx.position || "—") + " | Primary work area: " + ctx.workAreaText + " | Time in local government: " + (TERM_LABELS[ctx.tenure] || ctx.tenure) + (ctx.includeName && ctx.name ? " | Name on file: " + ctx.name : ""),
+      "",
+      "Process pain to improve:",
+      ctx.pain,
+      "",
+      "Estimated time this problem takes for our team (per week, rough): " + (TIME_LABELS[ctx.timeCost] || ctx.timeCost) + ".",
+      "",
+      "If we fix this well, we want: " + ctx.benefits,
+      "",
+      "What I need from you (Vibe):",
+      "1) Propose a small, realistic pilot: main screens or flows, and what would live in Dataverse at a high level.",
+      "2) Call out who approves what (human in the loop) for customer-facing or compliance-sensitive steps.",
+      "3) List assumptions, risks, dependencies, and what is explicitly out of scope.",
+      "4) Note governance points relevant to local government in Australia (e.g. privacy, records, AI use policies) in plain language, not legal advice.",
+      "5) If helpful, a short backlog of next steps for our IT or digital and records teams.",
     ].join("\n");
   }
 
@@ -715,56 +821,81 @@
       return;
     }
     showBanner("banner-error", "");
-    const prompt = buildPrompt();
+    const ctx = gatherPromptInputs();
+    const thoughts = buildPromptThoughts(ctx);
+    const paste = buildPromptVibeOnly(ctx);
     const snap = getFormSnapshot();
     const createdAt = new Date().toISOString();
     lastRecord = {
       id: "vlg-" + Date.now(),
       createdAt: createdAt,
-      formVersion: "1",
+      formVersion: "2",
       form: snap,
-      vibePrompt: prompt,
+      promptThoughts: thoughts,
+      vibePromptPaste: paste,
+      vibePrompt: paste,
     };
     saveSubmissionRecord(lastRecord);
     renderCapturedList(snap, createdAt);
-    outputText.value = prompt;
+    if (outputThought) outputThought.value = thoughts;
+    if (outputPaste) outputPaste.value = paste;
     outputSection.hidden = false;
     showBanner(
       "banner-success",
-      "Saved in this browser. Copy the Vibe prompt into vibe.powerapps.com, or copy / download your responses for records."
+      "Use part 2 (paste box) in vibe.powerapps.com. Part 1 is for your notes or team. Nothing sent to a server from this page."
     );
     updateOutputLocalHints();
     outputSection.scrollIntoView({ behavior: "smooth", block: "start" });
     try {
-      outputText.focus();
+      if (outputPaste) outputPaste.focus();
     } catch (ex) {
       /* ignore */
     }
   }
 
-  function copyOutput() {
-    const t = outputText.value;
-    if (!t) {
+  function copyToClipboard(text, el, successMsg) {
+    const done = function (msg) {
+      if ($("copy-status")) {
+        copyStatus.textContent = msg || successMsg;
+        setTimeout(function () {
+          copyStatus.textContent = "";
+        }, 2500);
+      }
+    };
+    if (!text) {
       showBanner("banner-error", "Generate a prompt first.");
       return;
     }
-    const done = function (msg) {
-      copyStatus.textContent = msg || "Vibe prompt copied.";
-      setTimeout(function () {
-        copyStatus.textContent = "";
-      }, 2500);
-    };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(t).then(function () { done(); }).catch(function () {
-        outputText.select();
+      navigator.clipboard
+        .writeText(text)
+        .then(function () {
+          done();
+        })
+        .catch(function () {
+          if (el) {
+            el.select();
+            document.execCommand("copy");
+            done();
+          } else {
+            showBanner("banner-error", "Could not copy to clipboard.");
+          }
+        });
+    } else {
+      if (el) {
+        el.select();
         document.execCommand("copy");
         done();
-      });
-    } else {
-      outputText.select();
-      document.execCommand("copy");
-      done();
+      }
     }
+  }
+
+  function copyVibePaste() {
+    copyToClipboard(outputPaste && outputPaste.value, outputPaste, "Vibe prompt (paste box) copied.");
+  }
+
+  function copyThoughtBlock() {
+    copyToClipboard(outputThought && outputThought.value, outputThought, "Thought process copied.");
   }
 
   function copyResponsesSummary() {
@@ -825,6 +956,7 @@
     applyPrefs(getPrefs());
     loadFormDraft();
     updateIdeas();
+    initTestPanelFromStorage();
     updateOutputLocalHints();
     if (getPrefs().theme === "system") {
       try {
@@ -873,8 +1005,15 @@
       emailInput.classList.remove("user-invalid");
     });
 
-    $("btn-copy").addEventListener("click", copyOutput);
+    $("btn-copy").addEventListener("click", copyVibePaste);
+    $("btn-copy-thought")?.addEventListener("click", copyThoughtBlock);
     $("btn-copy-responses")?.addEventListener("click", copyResponsesSummary);
+    $("btn-test-toggle")?.addEventListener("click", function () {
+      var body = $("test-tools-body");
+      var nowOpen = !!(body && !body.hasAttribute("hidden"));
+      setTestPanelOpen(!nowOpen);
+    });
+    $("btn-form-clear")?.addEventListener("click", clearEntireForm);
     $("btn-download-one")?.addEventListener("click", downloadThisJson);
     $("btn-download-all")?.addEventListener("click", downloadAllJson);
     $("btn-test-fill")?.addEventListener("click", applyTestPreset);

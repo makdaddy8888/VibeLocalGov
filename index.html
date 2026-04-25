@@ -88,10 +88,11 @@
         </p>
         <p>
           This page collects your <strong>work context</strong> and
-          <strong>biggest process pain</strong>, then writes a
-          <strong>single prompt you can paste</strong> into
-          <a href="https://vibe.powerapps.com" rel="noopener noreferrer">Vibe in Power Platform</a> (or your org’s
-          equivalent experience). <strong>Do not</strong> paste resident names, addresses, or other personal
+          <strong>biggest process pain</strong>, then gives you
+          <strong>two text blocks</strong>: a <em>thought process</em> (why the prompt is built this way) and a
+          <em>lean prompt</em> to paste into
+          <a href="https://vibe.powerapps.com" rel="noopener noreferrer">Vibe at vibe.powerapps.com</a> (or your org’s
+          equivalent). <strong>Do not</strong> paste resident names, addresses, or other personal
           information; describe processes and data types in generic terms.
         </p>
       </section>
@@ -100,7 +101,40 @@
       <div id="banner-success" class="banner banner--success" role="status" hidden></div>
 
       <form id="vibe-form" class="form card" novalidate>
-        <h2 class="form__title">Your details</h2>
+        <div class="test-tools-outer" id="test-tools-outer">
+          <div class="test-tools__header">
+            <h2 class="form__title test-tools__h">Testing &amp; reset</h2>
+            <div class="test-tools__header-actions">
+              <button
+                type="button"
+                class="btn btn--ghost"
+                id="btn-test-toggle"
+                aria-expanded="true"
+                aria-controls="test-tools-body"
+              >
+                Hide testing tools
+              </button>
+              <button type="button" class="btn btn--ghost" id="btn-form-clear">Clear form</button>
+            </div>
+          </div>
+          <div id="test-tools-body" class="test-tools card card--inset" role="region" aria-label="Testing tools">
+            <p class="test-tools__lede test-tools__lede--top">
+              Load <strong>fictional TEST</strong> data to see sample output, or clear everything and start over.
+            </p>
+            <div class="test-tools__row">
+              <label for="test-preset" class="visually-hidden">Test scenario</label>
+              <select id="test-preset" class="test-tools__select">
+                <option value="">Choose test scenario…</option>
+                <option value="customer-service">Customer service</option>
+                <option value="planning">Planning &amp; DA</option>
+                <option value="finance">Finance &amp; rates</option>
+              </select>
+              <button type="button" class="btn btn--ghost" id="btn-test-fill">Load test data</button>
+            </div>
+          </div>
+        </div>
+
+        <h2 class="form__title form__title--after-test">Your details</h2>
         <p class="form__note">Use your <strong>council work email</strong> — it must be an Australian government email ending in <code>.gov.au</code>.</p>
 
         <div class="field">
@@ -234,21 +268,6 @@
           <label for="include-name">Include my <strong>name</strong> in the generated prompt (off by default for privacy in shared tools)</label>
         </div>
 
-        <div class="test-tools card card--inset" aria-label="Test data">
-          <h3 class="test-tools__title">Testing</h3>
-          <p class="test-tools__lede">Load sample answers (fictional TEST data) to try the Vibe output and <code>md/</code> save flow.</p>
-          <div class="test-tools__row">
-            <label for="test-preset" class="visually-hidden">Test scenario</label>
-            <select id="test-preset" class="test-tools__select">
-              <option value="">Choose test scenario…</option>
-              <option value="customer-service">Customer service</option>
-              <option value="planning">Planning &amp; DA</option>
-              <option value="finance">Finance &amp; rates</option>
-            </select>
-            <button type="button" class="btn btn--ghost" id="btn-test-fill">Load test data</button>
-          </div>
-        </div>
-
         <div class="actions">
           <button type="submit" class="btn btn--primary" id="btn-generate">Generate Vibe prompt</button>
         </div>
@@ -257,13 +276,13 @@
       <section class="section output card" id="output-section" aria-labelledby="out-h" hidden>
         <h2 id="out-h">Your results</h2>
         <p class="output__lede">
-          Your answers are <strong>saved in this browser</strong> (see below) so you can copy them for records or a facilitator.
-          Use the <strong>Vibe prompt</strong> in
-          <a href="https://vibe.powerapps.com" rel="noopener noreferrer">Vibe in Power Platform</a> and refine with your team.
+          Your answers are <strong>saved in this browser</strong> (see below). There are
+          <strong>two blocks</strong>: <em>thought process</em> (read or share with your team) and <em>paste-only prompt</em> for
+          <a href="https://vibe.powerapps.com" rel="noopener noreferrer">vibe.powerapps.com</a> — use only the second in the Vibe text box.
         </p>
         <p class="output__lede output__lede--tight" id="md-local-hint" hidden>
-          <strong>Local only:</strong> with <code>node server.js</code> you can save a <code>.md</code> file into the project
-          <code>md/&lt;council&gt;/</code> folder, then open that file in your editor and copy the prompt into the Vibe window.
+          <strong>Local only:</strong> with <code>node server.js</code> you can save a <code>.md</code> file into
+          <code>md/&lt;council&gt;/</code> — the export labels part 1 (thought) and part 2 (paste for Vibe) clearly.
         </p>
 
         <div class="captured card card--inset" id="captured-block">
@@ -272,16 +291,40 @@
           <dl class="captured__dl" id="captured-dl"></dl>
         </div>
 
-        <h3 class="output__subheading" id="vibe-prompt-h">Vibe prompt — copy into Power Platform</h3>
+        <h3 class="output__subheading" id="thought-h">1. Thought process (read / share — do not paste into Vibe)</h3>
         <p class="output__lede output__lede--tight">
-          Paste the block below into the prompt box at
-          <a href="https://vibe.powerapps.com" rel="noopener noreferrer">vibe.powerapps.com</a> (or a Copilot window that
-          supports Power Platform). Follow your organisation’s <strong>data classification, records, and AI use</strong> policies.
+          Why this prompt is structured this way, your council context, and follow-up questions. Use this for your own notes or to align with IT / records — it is <strong>not</strong> meant for the Vibe prompt box.
         </p>
-        <label for="output-text" class="visually-hidden">Generated Vibe prompt</label>
-        <textarea id="output-text" class="output__textarea" readonly rows="20" spellcheck="false" aria-describedby="vibe-prompt-h"></textarea>
+        <label for="output-thought" class="visually-hidden">Thought process details</label>
+        <textarea
+          id="output-thought"
+          class="output__textarea"
+          readonly
+          rows="14"
+          spellcheck="false"
+          aria-describedby="thought-h"
+        ></textarea>
         <div class="output__actions output__actions--wrap">
-          <button type="button" class="btn btn--primary" id="btn-copy">Copy Vibe prompt</button>
+          <button type="button" class="btn btn--ghost" id="btn-copy-thought">Copy thought process</button>
+        </div>
+
+        <h3 class="output__subheading output__subheading--paste" id="paste-h">2. Paste into Vibe (vibe.powerapps.com only)</h3>
+        <p class="output__lede output__lede--tight">
+          Copy <strong>only</strong> the box below into the prompt field at
+          <a href="https://vibe.powerapps.com" rel="noopener noreferrer">https://vibe.powerapps.com</a>. Follow your organisation’s
+          <strong>data classification, records, and AI use</strong> policies.
+        </p>
+        <label for="output-paste" class="visually-hidden">Paste-only Vibe prompt</label>
+        <textarea
+          id="output-paste"
+          class="output__textarea output__textarea--paste"
+          readonly
+          rows="14"
+          spellcheck="false"
+          aria-describedby="paste-h"
+        ></textarea>
+        <div class="output__actions output__actions--wrap">
+          <button type="button" class="btn btn--primary" id="btn-copy">Copy for Vibe (paste box)</button>
           <button type="button" class="btn btn--ghost" id="btn-copy-responses">Copy responses summary</button>
           <button type="button" class="btn btn--ghost" id="btn-download-md">Download as Markdown</button>
           <button type="button" class="btn btn--ghost" id="btn-save-md-server" title="Requires npm start / node server.js">Save to project md/ folder</button>
