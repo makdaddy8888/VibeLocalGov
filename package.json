@@ -1,0 +1,13 @@
+{
+  "name": "vibelocalgov",
+  "private": true,
+  "description": "Local static server for VibeLocalGov (Node.js stdlib only — no extra packages)",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "start:open": "node server.js --open"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

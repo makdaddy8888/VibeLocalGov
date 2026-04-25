@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Build a copy-paste prompt for Microsoft Power Platform Vibe — for Australian local government staff with a work .gov.au email."
+    />
+    <title>VibeLocalGov — Power Platform prompt builder for council staff</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    <header class="site-header" role="banner">
+      <div class="site-header__inner">
+        <div class="site-header__brand">
+          <h1>VibeLocalGov</h1>
+          <p class="tagline">
+            Turn your council pain point into a clear prompt for
+            <a href="https://www.microsoft.com/en-au/power-platform/products/power-apps" rel="noopener noreferrer"
+              >Power Platform</a
+            >
+            <span class="nowrap">Vibe</span> — so Copilot and low-code tools work <em>with</em> you, not around you.
+          </p>
+        </div>
+        <button type="button" class="btn btn--ghost" id="btn-settings-toggle" aria-expanded="false" aria-controls="panel-settings">
+          Display &amp; accessibility
+        </button>
+      </div>
+    </header>
+
+    <div
+      id="panel-settings"
+      class="settings-panel"
+      role="region"
+      aria-labelledby="settings-heading"
+      hidden
+    >
+      <div class="settings-panel__inner">
+        <h2 id="settings-heading" class="settings-panel__title">Display &amp; accessibility</h2>
+        <p class="settings-panel__hint">
+          Aligned with common public-sector practice: readable type, sufficient contrast, and user control (WCAG&nbsp;2.2
+          aims). Your choices are saved only in <strong>this browser</strong>.
+        </p>
+        <div class="settings-grid">
+          <fieldset class="field">
+            <legend>Theme</legend>
+            <div class="seg" role="radiogroup" aria-label="Theme">
+              <label><input type="radio" name="theme" value="light" /> Light</label>
+              <label><input type="radio" name="theme" value="dark" /> Dark</label>
+              <label><input type="radio" name="theme" value="system" checked /> System</label>
+            </div>
+          </fieldset>
+          <fieldset class="field">
+            <legend>Colour scheme</legend>
+            <div class="seg" role="radiogroup" aria-label="Colour scheme">
+              <label><input type="radio" name="accent" value="council" checked /> Council blue</label>
+              <label><input type="radio" name="accent" value="eucalypt" /> Eucalypt</label>
+              <label><input type="radio" name="accent" value="highvis" /> High-visibility</label>
+            </div>
+          </fieldset>
+          <div class="field">
+            <label for="font-scale">Text size <span class="field__value" id="font-scale-readout" aria-live="polite">100%</span></label>
+            <input type="range" id="font-scale" name="font-scale" min="100" max="150" step="5" value="100" />
+          </div>
+          <div class="field field--row">
+            <input type="checkbox" id="high-contrast" name="high-contrast" />
+            <label for="high-contrast">Stronger contrast (borders &amp; focus)</label>
+          </div>
+          <div class="field field--row">
+            <input type="checkbox" id="reduce-motion" name="reduce-motion" />
+            <label for="reduce-motion">Reduce motion</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <main id="main">
+      <section class="section intro" aria-labelledby="intro-h">
+        <h2 id="intro-h">What this is for</h2>
+        <p>
+          Many Australian council staff already have <strong>Microsoft 365</strong> licences that include
+          <strong>Copilot</strong> and <strong>Power Platform</strong> (Power Apps, Power Automate, Dataverse). The hard
+          part is describing the problem so an assistant can help you design a
+          <span class="nowrap">responsible, reviewable</span> app or flow.
+        </p>
+        <p>
+          This page collects your <strong>work context</strong> and
+          <strong>biggest process pain</strong>, then writes a
+          <strong>single prompt you can paste</strong> into
+          <a href="https://vibe.powerapps.com" rel="noopener noreferrer">Vibe in Power Platform</a> (or your org’s
+          equivalent experience). <strong>Do not</strong> paste resident names, addresses, or other personal
+          information; describe processes and data types in generic terms.
+        </p>
+      </section>
+
+      <div id="banner-error" class="banner banner--error" role="alert" hidden></div>
+      <div id="banner-success" class="banner banner--success" role="status" hidden></div>
+
+      <form id="vibe-form" class="form card" novalidate>
+        <h2 class="form__title">Your details</h2>
+        <p class="form__note">Use your <strong>council work email</strong> — it must be an Australian government email ending in <code>.gov.au</code>.</p>
+
+        <div class="field">
+          <label for="full-name">Full name <span class="req" aria-hidden="true">*</span></label>
+          <input type="text" id="full-name" name="full-name" required autocomplete="name" />
+        </div>
+        <div class="field">
+          <label for="email"
+            >Work email address
+            <span class="req" aria-hidden="true">*</span>
+            <span class="field__hint">Must end in <code>.gov.au</code> (e.g. <code>name@council.nsw.gov.au</code>)</span></label
+          >
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            autocomplete="email"
+            inputmode="email"
+            spellcheck="false"
+            placeholder="name@yourcouncil.nsw.gov.au"
+          />
+          <p class="field__error" id="email-err" role="status" aria-live="polite"></p>
+        </div>
+        <div class="field">
+          <label for="council-key"
+            >Council folder (for <code>md/…</code> on this computer)
+            <span class="field__hint"
+              >Short id: letters, numbers, hyphens, e.g. <code>wollongong</code> or <code>northern-beaches</code>. If you leave
+              this blank, we derive a name from your work email. Used when you
+              <strong>save a Markdown file</strong> to the project folder (local server).</span
+            ></label
+          >
+          <input
+            type="text"
+            id="council-key"
+            name="council-key"
+            autocomplete="organization"
+            placeholder="e.g. demo-bays (optional)"
+            pattern="[a-z0-9A-Z-]*"
+          />
+        </div>
+        <div class="field">
+          <label for="position"
+            >Position / job title <span class="req" aria-hidden="true">*</span>
+            <span class="field__hint">Generic titles are fine (e.g. “Customer Officer”).</span></label
+          >
+          <input type="text" id="position" name="position" required autocomplete="organization-title" />
+        </div>
+        <div class="field">
+          <label for="work-area"
+            >Primary work area
+            <span class="field__hint"
+              >Used below to show <strong>example challenges</strong> for your kind of work (optional but helpful).</span
+            ></label
+          >
+          <select id="work-area" name="work-area">
+            <option value="">— Select the closest match —</option>
+            <option value="customer-service">Customer service / contact centre / front desk</option>
+            <option value="planning">Planning, development assessment &amp; building</option>
+            <option value="infrastructure">Infrastructure, assets, engineering &amp; works</option>
+            <option value="waste-environment">Waste, environment, sustainability &amp; parks</option>
+            <option value="community">Community services (libraries, recreation, inclusion)</option>
+            <option value="finance">Finance, rates, procurement &amp; revenue</option>
+            <option value="people-culture">People &amp; culture, WHS, learning &amp; development</option>
+            <option value="regulatory">Regulatory, compliance, rangers &amp; local law</option>
+            <option value="corporate">Corporate, governance, legal, communications &amp; executive support</option>
+            <option value="it-digital">IT, digital &amp; information management</option>
+            <option value="other">Other / not listed</option>
+          </select>
+        </div>
+
+        <div class="ideas card card--inset" id="ideas-block" role="region" aria-labelledby="ideas-h">
+          <h3 class="ideas__title" id="ideas-h">Challenges in your type of role (examples)</h3>
+          <p class="ideas__lede" id="ideas-lede"></p>
+          <ul class="ideas__list" id="ideas-list" role="list" hidden></ul>
+        </div>
+
+        <div class="field">
+          <label for="tenure"
+            >How long have you been working in local (council) government? <span class="req" aria-hidden="true">*</span></label
+          >
+          <select id="tenure" name="tenure" required>
+            <option value="">— Select —</option>
+            <option value="lt1">Less than 1 year</option>
+            <option value="1-2">1–2 years</option>
+            <option value="3-5">3–5 years</option>
+            <option value="6-10">6–10 years</option>
+            <option value="11-20">11–20 years</option>
+            <option value="20plus">More than 20 years</option>
+          </select>
+        </div>
+
+        <h2 class="form__title form__title--spaced" id="pain-h">Your pain point &amp; Vibe</h2>
+        <div class="field">
+          <label for="pain"
+            >What is the biggest thing you would like to fix with a
+            <strong>new app or automation</strong> (using
+            <a href="https://vibe.powerapps.com" rel="noopener noreferrer">Vibe in Power Platform</a> or similar)? <span class="req" aria-hidden="true">*</span>
+            <span class="field__hint"
+              >Describe the process, not private details about people. E.g. “re-keying the same data into two systems
+              after each call.”</span
+            ></label
+          >
+          <textarea id="pain" name="pain" required rows="4"></textarea>
+        </div>
+        <div class="field">
+          <label for="time-cost"
+            >Roughly how much <strong>time</strong> does this problem cost you (and others) per week? <span class="req" aria-hidden="true">*</span></label
+          >
+          <select id="time-cost" name="time-cost" required>
+            <option value="">— Select —</option>
+            <option value="lt1">Under 1 hour</option>
+            <option value="1-3">1–3 hours</option>
+            <option value="3-5">3–5 hours</option>
+            <option value="5-10">5–10 hours</option>
+            <option value="10plus">10+ hours</option>
+            <option value="unsure">Unsure / varies a lot</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="benefits"
+            >What <strong>benefits</strong> would you get if a Power App / flow solved it well? <span class="req" aria-hidden="true">*</span>
+            <span class="field__hint">E.g. fewer errors, faster service, less rework, better audit trail.</span></label
+          >
+          <textarea id="benefits" name="benefits" required rows="3"></textarea>
+        </div>
+
+        <div class="field field--row">
+          <input type="checkbox" id="include-name" name="include-name" />
+          <label for="include-name">Include my <strong>name</strong> in the generated prompt (off by default for privacy in shared tools)</label>
+        </div>
+
+        <div class="test-tools card card--inset" aria-label="Test data">
+          <h3 class="test-tools__title">Testing</h3>
+          <p class="test-tools__lede">Load sample answers (fictional TEST data) to try the Vibe output and <code>md/</code> save flow.</p>
+          <div class="test-tools__row">
+            <label for="test-preset" class="visually-hidden">Test scenario</label>
+            <select id="test-preset" class="test-tools__select">
+              <option value="">Choose test scenario…</option>
+              <option value="customer-service">Customer service</option>
+              <option value="planning">Planning &amp; DA</option>
+              <option value="finance">Finance &amp; rates</option>
+            </select>
+            <button type="button" class="btn btn--ghost" id="btn-test-fill">Load test data</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn btn--primary" id="btn-generate">Generate Vibe prompt</button>
+        </div>
+      </form>
+
+      <section class="section output card" id="output-section" aria-labelledby="out-h" hidden>
+        <h2 id="out-h">Your results</h2>
+        <p class="output__lede">
+          Your answers are <strong>saved in this browser</strong> (see below) so you can copy them for records or a facilitator.
+          Use the <strong>Vibe prompt</strong> in
+          <a href="https://vibe.powerapps.com" rel="noopener noreferrer">Vibe in Power Platform</a> and refine with your team.
+        </p>
+        <p class="output__lede output__lede--tight" id="md-local-hint" hidden>
+          <strong>Local only:</strong> with <code>node server.js</code> you can save a <code>.md</code> file into the project
+          <code>md/&lt;council&gt;/</code> folder, then open that file in your editor and copy the prompt into the Vibe window.
+        </p>
+
+        <div class="captured card card--inset" id="captured-block">
+          <h3 class="captured__title" id="captured-h">Responses captured</h3>
+          <p class="captured__note" id="captured-saved" aria-live="polite"></p>
+          <dl class="captured__dl" id="captured-dl"></dl>
+        </div>
+
+        <h3 class="output__subheading" id="vibe-prompt-h">Vibe prompt — copy into Power Platform</h3>
+        <p class="output__lede output__lede--tight">
+          Paste the block below into the prompt box at
+          <a href="https://vibe.powerapps.com" rel="noopener noreferrer">vibe.powerapps.com</a> (or a Copilot window that
+          supports Power Platform). Follow your organisation’s <strong>data classification, records, and AI use</strong> policies.
+        </p>
+        <label for="output-text" class="visually-hidden">Generated Vibe prompt</label>
+        <textarea id="output-text" class="output__textarea" readonly rows="20" spellcheck="false" aria-describedby="vibe-prompt-h"></textarea>
+        <div class="output__actions output__actions--wrap">
+          <button type="button" class="btn btn--primary" id="btn-copy">Copy Vibe prompt</button>
+          <button type="button" class="btn btn--ghost" id="btn-copy-responses">Copy responses summary</button>
+          <button type="button" class="btn btn--ghost" id="btn-download-md">Download as Markdown</button>
+          <button type="button" class="btn btn--ghost" id="btn-save-md-server" title="Requires npm start / node server.js">Save to project md/ folder</button>
+          <button type="button" class="btn btn--ghost" id="btn-download-one">Download this (JSON)</button>
+          <span class="output__status" id="copy-status" role="status" aria-live="polite"></span>
+        </div>
+        <p class="md-save-line" id="md-save-line" role="status" aria-live="polite" hidden></p>
+        <p class="output__footer-actions">
+          <button type="button" class="btn btn--ghost btn--sm" id="btn-download-all">Download all saved responses in this browser (JSON)</button>
+        </p>
+      </section>
+
+      <section class="section card qr-section" aria-labelledby="qr-h">
+        <h2 id="qr-h">Visit the Power Platform AU site</h2>
+        <p>
+          The <strong>powerplatform.com.au</strong> experience is a companion space for local-government Power Platform
+          content; the site is built with
+          <a href="https://github.com/emdash-cms/emdash" rel="noopener noreferrer">EmDash</a> (Astro + Cloudflare
+          &mdash; open source on GitHub). Scan the code or use the link below.
+        </p>
+        <a
+          href="https://powerplatform.com.au"
+          class="qr-block"
+          rel="noopener noreferrer"
+          title="https://powerplatform.com.au"
+        >
+          <img
+            src="assets/qr-powerplatform.com.au.png"
+            width="320"
+            height="320"
+            alt="QR code. Scan to open https://powerplatform.com.au in your browser."
+            loading="lazy"
+            decoding="async"
+          />
+        </a>
+        <p class="qr-section__url">
+          <a href="https://powerplatform.com.au" rel="noopener noreferrer">https://powerplatform.com.au</a>
+        </p>
+        <p class="qr-section__meta">
+          <span class="visually-hidden">EmDash on GitHub: </span>
+          <a href="https://github.com/emdash-cms/emdash" rel="noopener noreferrer"
+            >github.com/emdash-cms/emdash</a
+          >
+        </p>
+      </section>
+
+      <section class="section privacy" aria-labelledby="privacy-h">
+        <h2 id="privacy-h">Privacy &amp; records</h2>
+        <p>
+          When you click <strong>Generate Vibe prompt</strong>, your answers and the generated prompt are stored in
+          <strong>this browser only</strong> (local storage) and shown in <strong>Responses captured</strong> — nothing is sent to our server. If
+          you export, email, or share, do so in line with your council’s
+          <strong>privacy</strong> and <strong>official records</strong> rules. For formal programs, your organisation should
+          issue a <strong>collection notice</strong> where required.
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <p>
+        Built for Australian <strong>local government</strong> context. Vibe, Power Platform, and Copilot are Microsoft
+        product names. Not affiliated with any government or Microsoft — a planning aid for staff and digital teams.
+      </p>
+    </footer>
+
+    <script src="data/role-ideas.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
